@@ -1,0 +1,70 @@
+---
+title: "mini-essay2"
+format: html
+---
+
+
+```{r}
+#### Preamble ####
+# Purpose: Read in data from opendatatoronto, clean it and make a graph
+# Author: Zeb Yang
+# Email: zhengzeb.yang@mail.utoronto.ca
+# Date: 15 January 2023
+# Prerequisites: -
+```
+
+```{r}
+#### Workspace setup ####
+# install.packages("tidyverse")
+# install.packages("janitor")
+# install.packages("opendatatoronto")
+library(opendatatoronto)
+library(tidyverse)
+library(janitor)
+library(knitr)
+```
+
+```{r}
+#### Acquire ####
+toronto_shelters <-
+  # Each package is associated with a unique id  found in the "For 
+  # Developers" tab of the relevant page from Open Data Toronto
+  # https://open.toronto.ca/dataset/daily-shelter-overnight-service-occupancy-capacity/
+  list_package_resources("21c83b32-d5a8-4106-a54f-010dbe49f6f2") |>
+  # Within that package, we are interested in the 2021 dataset
+  filter(name == 
+    "daily-shelter-overnight-service-occupancy-capacity-2021.csv") |>
+  # Having reduced the dataset to one row we can get the resource
+  get_resource()
+```
+
+```{r}
+### Clean the data###
+toronto_shelters_clean <-
+  clean_names(toronto_shelters) |>
+  mutate(occupancy_date = ymd(occupancy_date)) |> 
+  select(occupancy_date, occupied_beds)
+
+head(toronto_shelters_clean)
+```
+
+```{r}
+cleaned_data <- toronto_shelters_clean |>
+  mutate(occupancy_month = month(
+    occupancy_date,
+    label = TRUE,
+    abbr = FALSE
+  )) |>
+  arrange(month(occupancy_date)) |> 
+  drop_na(occupied_beds) |>
+  summarise(number_occupied = mean(occupied_beds),
+            .by = occupancy_month)
+
+cleaned_data |>
+  ggplot(aes(x = occupancy_month, y = number_occupied)) +
+  geom_point() +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") +
+  theme(legend.position = "bottom")
+```
+
